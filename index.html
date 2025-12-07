@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Therapy AI Assistant</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- First Launch Popup -->
+  <div id="welcomePopup" class="popup">
+    <div class="popup-content">
+      <h2>Welcome to Therapy AI</h2>
+      <p>This AI listens and responds with supportive, empathetic guidance. It is designed to help you feel heard and calm — not to replace a human professional.</p>
+
+      <h3>How it works</h3>
+      <ul>
+        <li>Choose a voice (Male / Female).</li>
+        <li>Click <strong>Start Call</strong>, allow the microphone, then speak naturally.</li>
+        <li>The AI will listen, respond in voice, and continue the conversation automatically.</li>
+      </ul>
+
+      <h3>Safety</h3>
+      <p>If you or someone is in immediate danger or at risk, please contact local emergency services or a trusted adult right away. This AI is for supportive conversation only.</p>
+
+      <button id="closePopup">Start Using AI</button>
+    </div>
+  </div>
+
+  <!-- Main UI -->
+  <div class="container">
+    <header>
+      <h1>Therapy AI Assistant</h1>
+      <p class="sub">A supportive voice-based companion — English only.</p>
+    </header>
+
+    <section class="controls">
+      <div class="voice-choice">
+        <button id="maleBtn" class="voice-btn selected"><img src="assets/male.png" alt="Male" /> Male</button>
+        <button id="femaleBtn" class="voice-btn"><img src="assets/female.png" alt="Female" /> Female</button>
+      </div>
+
+      <div class="call-controls">
+        <button id="startCallBtn" class="primary">Start Call 🎤</button>
+        <button id="stopCallBtn" class="secondary" disabled>Stop</button>
+      </div>
+
+      <p id="status">Status: Waiting...</p>
+    </section>
+
+    <section class="session">
+      <h3>Session (last messages)</h3>
+      <div id="sessionLog" class="session-log"></div>
+      <button id="clearSession" class="link">Clear session history</button>
+    </section>
+
+    <footer>
+      <small>Not a medical service — for emergencies contact local services or a trusted adult.</small>
+    </footer>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
