@@ -3,11 +3,12 @@
    - Session memory in localStorage (last 10 pairs)
    - Emotion keyword booster
    - Connected to Railway backend
+   - Fixed recognition loop and CORS issue
 */
 
 // ====== CONFIG ======
 const BACKEND_URL = "https://therapy-backend-production-3628.up.railway.app/getAIReply"; // LIVE Railway backend
-const MAX_SESSION_ENTRIES = 10; // how many recent pairs to keep
+const MAX_SESSION_ENTRIES = 10; 
 const EMOTION_KEYWORDS = ["sad","hopeless","depressed","anxious","alone","suicid","worthless","panic","overwhelmed","stressed","lonely","helpless"];
 
 // ====== UI ======
@@ -68,8 +69,8 @@ clearSessionBtn.addEventListener("click", () => {
 });
 
 // ====== Start / Stop Controls ======
-startCallBtn.addEventListener("click", startContinuousConversation);
-stopCallBtn.addEventListener("click", stopContinuousConversation);
+startCallBtn.addEventListener("click", () => { if (!isRecording) startContinuousConversation(); });
+stopCallBtn.addEventListener("click", () => stopContinuousConversation());
 
 function startContinuousConversation() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -78,12 +79,7 @@ function startContinuousConversation() {
     return;
   }
 
-  if (isRecording) return; // prevent multiple starts
-  isRecording = true;
-  startCallBtn.disabled = true;
-  stopCallBtn.disabled = false;
-  statusEl.innerText = "Status: Listening (allow microphone)...";
-
+  if (recognition) recognition.stop(); // safety
   recognition = new SpeechRecognition();
   recognition.lang = "en-US";
   recognition.interimResults = false;
@@ -101,19 +97,21 @@ function startContinuousConversation() {
     addSessionFull(userText, aiReply);
 
     await speakAndWait(aiReply);
-    if (isRecording) recognition.start(); // restart listening after TTS
   };
 
   recognition.onerror = (event) => {
-    console.warn("Recognition error:", event.error);
-    statusEl.innerText = `Error listening: ${event.error} — retrying...`;
-    if (isRecording) setTimeout(() => recognition.start(), 500);
+    console.error("Recognition error", event.error);
+    statusEl.innerText = "Status: Error listening — retrying...";
   };
 
   recognition.onend = () => {
-    if (isRecording) setTimeout(() => recognition.start(), 300);
+    if (isRecording) setTimeout(() => recognition.start(), 300); // restart loop safely
   };
 
+  isRecording = true;
+  startCallBtn.disabled = true;
+  stopCallBtn.disabled = false;
+  statusEl.innerText = "Status: Listening...";
   recognition.start();
 }
 
@@ -122,11 +120,8 @@ function stopContinuousConversation() {
   startCallBtn.disabled = false;
   stopCallBtn.disabled = true;
   statusEl.innerText = "Status: Stopped.";
-
-  if (recognition) {
-    try { recognition.stop(); } catch(e) {}
-    recognition = null;
-  }
+  if (recognition) try { recognition.stop(); } catch(e) {}
+  recognition = null;
 }
 
 // ====== Session Helpers ======
