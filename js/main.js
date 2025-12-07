@@ -44,7 +44,7 @@ function selectVoice(which) {
   statusEl.innerText = `Status: ${which[0].toUpperCase() + which.slice(1)} voice selected`;
 }
 
-// session UI render
+// ====== Session UI render ======
 function renderSession() {
   sessionLogEl.innerHTML = "";
   sessionHistory.slice().reverse().forEach(pair => {
@@ -68,8 +68,8 @@ clearSessionBtn.addEventListener("click", () => {
 });
 
 // ====== Start / Stop Controls ======
-startCallBtn.addEventListener("click", () => { if (!isRecording) startContinuousConversation(); });
-stopCallBtn.addEventListener("click", () => stopContinuousConversation());
+startCallBtn.addEventListener("click", startContinuousConversation);
+stopCallBtn.addEventListener("click", stopContinuousConversation);
 
 function startContinuousConversation() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -77,11 +77,44 @@ function startContinuousConversation() {
     alert("Your browser does not support Speech Recognition. Use Chrome or Edge.");
     return;
   }
+
+  if (isRecording) return; // prevent multiple starts
   isRecording = true;
   startCallBtn.disabled = true;
   stopCallBtn.disabled = false;
   statusEl.innerText = "Status: Listening (allow microphone)...";
-  listenAndReply(); // starts loop
+
+  recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onresult = async (event) => {
+    const userText = event.results[0][0].transcript;
+    addSessionPartial(userText, null);
+    statusEl.innerText = `You said: "${userText}"`;
+
+    const containsEmotion = EMOTION_KEYWORDS.some(k => userText.toLowerCase().includes(k));
+    const payload = { text: userText, session: sessionHistory.slice(-MAX_SESSION_ENTRIES), emotion_flag: containsEmotion };
+
+    const aiReply = await getAIReply(payload);
+    addSessionFull(userText, aiReply);
+
+    await speakAndWait(aiReply);
+    if (isRecording) recognition.start(); // restart listening after TTS
+  };
+
+  recognition.onerror = (event) => {
+    console.warn("Recognition error:", event.error);
+    statusEl.innerText = `Error listening: ${event.error} — retrying...`;
+    if (isRecording) setTimeout(() => recognition.start(), 500);
+  };
+
+  recognition.onend = () => {
+    if (isRecording) setTimeout(() => recognition.start(), 300);
+  };
+
+  recognition.start();
 }
 
 function stopContinuousConversation() {
@@ -89,53 +122,11 @@ function stopContinuousConversation() {
   startCallBtn.disabled = false;
   stopCallBtn.disabled = true;
   statusEl.innerText = "Status: Stopped.";
-  if (recognition) try { recognition.stop(); } catch(e) {}
-  recognition = null;
-}
 
-// ====== Listening + AI Loop ======
-async function listenAndReply() {
-  if (!isRecording) return;
-
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition = new SpeechRecognition();
-  recognition.lang = "en-US";
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
-
-  recognition.start();
-  statusEl.innerText = "Status: Listening...";
-
-  recognition.onresult = async (event) => {
-    const userText = event.results[0][0].transcript;
-    addSessionPartial(userText, null);
-    statusEl.innerText = `You said: "${userText}"`;
-
-    const lowered = userText.toLowerCase();
-    const containsEmotion = EMOTION_KEYWORDS.some(k => lowered.includes(k));
-
-    const payload = {
-      text: userText,
-      session: sessionHistory.slice(-MAX_SESSION_ENTRIES),
-      emotion_flag: containsEmotion
-    };
-
-    const aiReply = await getAIReply(payload);
-    addSessionFull(userText, aiReply);
-    await speakAndWait(aiReply);
-
-    if (isRecording) listenAndReply();
-  };
-
-  recognition.onerror = (event) => {
-    console.error("Recognition error", event.error);
-    statusEl.innerText = "Status: Error listening — retrying...";
-    setTimeout(() => { if (isRecording) listenAndReply(); }, 700);
-  };
-
-  recognition.onend = () => {
-    if (isRecording) setTimeout(() => { if (isRecording) listenAndReply(); }, 250);
-  };
+  if (recognition) {
+    try { recognition.stop(); } catch(e) {}
+    recognition = null;
+  }
 }
 
 // ====== Session Helpers ======
